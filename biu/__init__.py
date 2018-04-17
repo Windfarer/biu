@@ -1,18 +1,24 @@
 from gevent import monkey
 monkey.patch_all()
 
-import gevent
 import collections
+
+import gevent
+from gevent.lock import BoundedSemaphore
 from gevent import pool
 
+import urllib3
+urllib3.disable_warnings()
+
 import requests
+
 from timeit import default_timer
-from gevent.lock import BoundedSemaphore
 from parsel import Selector as _ParselSelector
-from typing import Callable, Dict
+
+from typing import Callable, Dict, TypeVar
+IntOrFloat = TypeVar([int, float])
 
 import logging
-
 logger = logging.getLogger(__name__)
 
 
@@ -80,11 +86,11 @@ class Response:
 class Project:
     def __init__(self,
                  concurrent: int=2,
-                 interval: int=1,
+                 interval: IntOrFloat=1,
                  max_retry: int=5,
-                 process_timeout: int=30,
-                 request_timeout: int=60,
-                 retry_delay:int=60,
+                 process_timeout: IntOrFloat=30,
+                 request_timeout: IntOrFloat=60,
+                 retry_delay:IntOrFloat=60,
                  *args, **kwargs):
         self.concurrent = concurrent
         self.interval = interval
