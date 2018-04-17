@@ -219,4 +219,4 @@ class BiuCore:
 
 
 def run(proj_obj: Project):
-    LagCore(proj_obj).run()
+    BiuCore(proj_obj).run()

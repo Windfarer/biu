@@ -5,3 +5,10 @@ A tiny web crawler framework
 ```
 pip install biu
 ```
+
+## Usage
+```
+import biu  # Must be the first line, because of monkey-included.
+
+
+```
