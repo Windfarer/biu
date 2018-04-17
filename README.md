@@ -1,14 +1,44 @@
 # Biu
 A tiny web crawler framework
 
+## Features
+* 并发基于Gevent，因此你必须在脚本一开始`import biu`，或者自行进行monkey patch
+* 请求基于Requests，请求与请求结果的参数与Requests基本兼容
+* 页面解析基于Parsel, 因此使用方法与Scrapy一致
+* 基本是一个缩水版的Scrapy，用法与之非常类似
+* 更多高级功能请面向源代码编程，自行发掘
+
 ## Installation
 ```
 pip install biu
 ```
 
 ## Usage
-```
-import biu  # Must be the first line, because of monkey-included.
+```python
+import biu  ## Must be the first line, because of monkey-included.
+
+class MySpider(biu.Project):
+    def start_requests(self):
+        for i in range(0, 301, 30):
+            yield biu.Request(url="https://www.douban.com/group/explore/tech?start={}".format(i),
+                              method="GET",
+                              headers={"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/65.0.3325.181 Safari/537.36"},
+                              callback=self.parse)   ## return or yield Request object to fetch a web page
+                                                     ## this Request object supports requests library's arguments
+    def parse(self, resp):
+        ## this Response object supports requests library's arguments
+        for item in resp.xpath('//*[@id="content"]/div/div[1]/div[1]/div'):
+            yield {
+                "title": item.xpath("div[2]/h3/a/text()").extract_first(),
+                "url": item.xpath("div[2]/h3/a/@href").extract_first(),
+                "abstract": item.css("p::text").extract_first()
+            }
+            # return or yield a dict as a result, results will go to result_handler by default
 
 
+    def result_handler(self, rv):
+        print("get result:", rv)  # or you can store it to your storage here
+
+
+biu.run(MySpider())
 ```
