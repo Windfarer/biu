@@ -18,28 +18,38 @@ pip install biu
 ```python
 import biu  ## Must be the first line, because of monkey-included.
 
+
 class MySpider(biu.Project):
     def start_requests(self):
         for i in range(0, 301, 30):
+
+            ## return or yield Request object to fetch a web page
+            ## this Request object supports requests library's arguments
+
             yield biu.Request(url="https://www.douban.com/group/explore/tech?start={}".format(i),
                               method="GET",
                               headers={"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/65.0.3325.181 Safari/537.36"},
-                              callback=self.parse)   ## return or yield Request object to fetch a web page
-                                                     ## this Request object supports requests library's arguments
+                              callback=self.parse)
+
     def parse(self, resp):
+
         ## this Response object supports requests library's arguments
+
         for item in resp.xpath('//*[@id="content"]/div/div[1]/div[1]/div'):
             yield {
                 "title": item.xpath("div[2]/h3/a/text()").extract_first(),
                 "url": item.xpath("div[2]/h3/a/@href").extract_first(),
                 "abstract": item.css("p::text").extract_first()
             }
+
             # return or yield a dict as a result, results will go to result_handler by default
 
 
     def result_handler(self, rv):
-        print("get result:", rv)  # or you can store it to your storage here
+        print("get result:", rv)
+        # or you can store it to your storage here
 
 
 biu.run(MySpider())
+
 ```
