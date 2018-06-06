@@ -192,7 +192,7 @@ class BiuCore:
         try:
             with gevent.Timeout(self._default_process_timeout):
                 processed_rv = handler(resp)
-                self._pool.spawn(self.process_value, processed_rv, pre_resp=resp)
+                self.process_value(processed_rv, pre_resp=resp)
         except gevent.Timeout:
             logger.debug("Processing timeout")
             return

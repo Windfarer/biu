@@ -18,7 +18,7 @@ URL = 'https://github.com/Windfarer/biu'
 EMAIL = 'windfarer@gmail.com'
 AUTHOR = 'Windfarer'
 REQUIRES_PYTHON = '>=3.6.0'
-VERSION = '0.1.2'
+VERSION = '0.1.3'
 
 REQUIRED = [
     'gevent', 'requests', 'parsel',
