@@ -24,7 +24,9 @@ logger = logging.getLogger(__name__)
 
 class Request:
     def __init__(self, url: str, callback: Callable=None, method="GET", save: Dict=None, **kwargs):
-        self._raw_req_obj = requests.Request(url=url, method=method, **kwargs)
+        req_args = {k: v for k, v in kwargs if k in ("method", "url", "headers", "files", "data",
+                                                     "params", "auth", "cookies", "hooks", "json")}
+        self._raw_req_obj = requests.Request(url=url, method=method, **req_args)
         self._raw_prepared_req_obj = self._raw_req_obj.prepare()
         self.callback = callback
         self._save = dict(save) if save is not None else {}
@@ -157,7 +159,7 @@ class BiuCore:
                 ## todo: handle error code
                 resp = Response(req, raw_resp)
                 return self._pool.spawn(self.callback_handler, req, resp)
-            except gevent.Timeout as e:
+            except requests.Timeout as e:
                 logger.debug("Fetch timeout!")
                 if retried < self._max_retry:
                     gevent.sleep(self._retry_delay)
@@ -179,8 +181,8 @@ class BiuCore:
             if elapsed < self._interval:
                 gevent.sleep(self._interval - elapsed)
             self._last_time = default_timer()
-            with gevent.Timeout(self._default_request_timeout):
-                return self._session.send(req, verify=False, proxies=proxies)
+            return self._session.send(req, verify=False, proxies=proxies,
+                                      timeout=self._default_request_timeout)
 
     def callback_handler(self, req: Request, resp: Response, pre_resp: Response=None):
         resp.save = dict(req.save)
