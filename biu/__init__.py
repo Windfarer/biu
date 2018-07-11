@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 class Request:
     def __init__(self, url: str, callback: Callable=None, method="GET", save: Dict=None, **kwargs):
-        req_args = {k: v for k, v in kwargs if k in ("method", "url", "headers", "files", "data",
+        req_args = {k: v for k, v in kwargs.items() if k in ("method", "url", "headers", "files", "data",
                                                      "params", "auth", "cookies", "hooks", "json")}
         self._raw_req_obj = requests.Request(url=url, method=method, **req_args)
         self._raw_prepared_req_obj = self._raw_req_obj.prepare()
