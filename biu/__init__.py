@@ -20,7 +20,12 @@ IntOrFloat = TypeVar([int, float])
 
 import logging
 logger = logging.getLogger(__name__)
-
+_logger_handler = logging.StreamHandler()
+_logger_formatter = logging.Formatter(
+        '[%(levelname)s] %(asctime)s - %(message)s')
+_logger_handler.setFormatter(_logger_formatter)
+logger.addHandler(_logger_handler)
+logger.setLevel("INFO")
 
 class Request:
     def __init__(self, url: str, callback: Callable=None, method="GET", save: Dict=None, **kwargs):
@@ -39,6 +44,9 @@ class Request:
     def save(self, value):
         self._save = dict(value)
 
+    def __getattr__(self, item):
+        if item not in self.__dict__:
+            return getattr(self._raw_req_obj, item)
 
 class Response:
     def __init__(self, request: Request, raw_resp_obj: requests.Response):
@@ -160,7 +168,7 @@ class BiuCore:
                 resp = Response(req, raw_resp)
                 return self._pool.spawn(self.callback_handler, req, resp)
             except requests.Timeout as e:
-                logger.debug("Fetch timeout!")
+                logger.error("Fetch timeout!")
                 if retried < self._max_retry:
                     gevent.sleep(self._retry_delay)
                     continue
@@ -171,7 +179,7 @@ class BiuCore:
                     gevent.sleep(self._retry_delay)
                     continue
                 return
-        logger.debug('Retry failed! {} {}'.format(raw_req.url, retried))
+        logger.error('Retry failed! {} {}'.format(raw_req.url, retried))
 
     def rate_limit_send_request(self, req: requests.PreparedRequest, proxies: dict=None):
         gevent.sleep(0)
@@ -185,6 +193,7 @@ class BiuCore:
                                       timeout=self._default_request_timeout)
 
     def callback_handler(self, req: Request, resp: Response, pre_resp: Response=None):
+        logger.info("Request: %s %s", req.method, req.url)
         resp.save = dict(req.save)
         if not resp.save:
             resp.save = {}
@@ -196,7 +205,7 @@ class BiuCore:
                 processed_rv = handler(resp)
                 self.process_value(processed_rv, pre_resp=resp)
         except gevent.Timeout:
-            logger.debug("Processing timeout")
+            logger.error("Processing timeout")
             return
         except Exception as e:
             logger.error("Exception %s", e)
