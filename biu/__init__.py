@@ -31,6 +31,7 @@ class Request:
     def __init__(self, url: str, callback: Callable=None, method="GET", save: Dict=None, **kwargs):
         req_args = {k: v for k, v in kwargs.items() if k in ("method", "url", "headers", "files", "data",
                                                      "params", "auth", "cookies", "hooks", "json")}
+        self.send_args = {k: v for k, v in kwargs.items() if k in ("allow_redirects",)}
         self._raw_req_obj = requests.Request(url=url, method=method, **req_args)
         self._raw_prepared_req_obj = self._raw_req_obj.prepare()
         self.callback = callback
@@ -162,7 +163,8 @@ class BiuCore:
                 logger.debug('Retried {}'.format(retried))
                 logger.debug('Request sent {}'.format(raw_req.url))
 
-                raw_resp = self.rate_limit_send_request(raw_req)
+                send_args = req.send_args
+                raw_resp = self.rate_limit_send_request(raw_req, send_args)
                 raw_resp.raise_for_status()
                 ## todo: handle error code
                 resp = Response(req, raw_resp)
@@ -181,7 +183,7 @@ class BiuCore:
                 return
         logger.error('Retry failed! {} {}'.format(raw_req.url, retried))
 
-    def rate_limit_send_request(self, req: requests.PreparedRequest, proxies: dict=None):
+    def rate_limit_send_request(self, req: requests.PreparedRequest, send_args: dict=None, proxies: dict=None):
         gevent.sleep(0)
         with self._semaphore:
             last, current = self._last_time, default_timer()
@@ -189,11 +191,12 @@ class BiuCore:
             if elapsed < self._interval:
                 gevent.sleep(self._interval - elapsed)
             self._last_time = default_timer()
+
             return self._session.send(req, verify=False, proxies=proxies,
-                                      timeout=self._default_request_timeout)
+                                      timeout=self._default_request_timeout, **send_args)
 
     def callback_handler(self, req: Request, resp: Response, pre_resp: Response=None):
-        logger.info("Request: %s %s", req.method, req.url)
+        logger.info("Request: %s %s %s", resp.status_code, req.method, resp.url)
         resp.save = dict(req.save)
         if not resp.save:
             resp.save = {}
