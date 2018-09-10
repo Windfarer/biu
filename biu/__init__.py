@@ -122,6 +122,11 @@ class Project:
     def result_handler(self, rv):
         return rv
 
+    def before(self):
+        pass
+
+    def after(self):
+        pass
 
 class Selector(_ParselSelector):
     __slots__ = ('response',)
@@ -233,17 +238,13 @@ class BiuCore:
             for i in rv:
                 self.process_value(i, pre_resp=pre_resp)
 
-    def before(self):
-        pass
 
-    def after(self):
-        pass
 
     def run(self):
-        self.before()
+        self.project.before()
         self.process_value(self.project.start_requests())
         self._pool.join()
-        self.after()
+        self.project.after()
 
 def run(proj_obj: Project):
     BiuCore(proj_obj).run()
