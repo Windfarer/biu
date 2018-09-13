@@ -69,6 +69,7 @@ class Response:
     @encoding.setter
     def encoding(self, value):
         self._raw_resp_obj.encoding = value
+        self.selector = Selector(response=self._raw_resp_obj)
 
     def detect_charset(self):
         raise NotImplementedError
