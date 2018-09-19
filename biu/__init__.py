@@ -210,12 +210,8 @@ class BiuCore:
                 resp.save.update(pre_resp.save)
         handler = req.callback
         try:
-            with gevent.Timeout(self._default_process_timeout):
-                processed_rv = handler(resp)
-                self.process_value(processed_rv, pre_resp=resp)
-        except gevent.Timeout:
-            logger.error("Processing timeout")
-            return
+            processed_rv = handler(resp)
+            self.process_value(processed_rv, pre_resp=resp)
         except Exception as e:
             logger.error("Exception %s", e)
             raise
