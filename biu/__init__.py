@@ -27,8 +27,9 @@ _logger_handler.setFormatter(_logger_formatter)
 logger.addHandler(_logger_handler)
 logger.setLevel("INFO")
 
+
 class Request:
-    def __init__(self, url: str, callback: Callable=None, method="GET", save: Dict=None, **kwargs):
+    def __init__(self, url: str, callback: Callable=None, method="GET", save: Dict=None, allow_codes=None, **kwargs):
         req_args = {k: v for k, v in kwargs.items() if k in ("method", "url", "headers", "files", "data",
                                                      "params", "auth", "cookies", "hooks", "json")}
         self.send_args = {k: v for k, v in kwargs.items() if k in ("allow_redirects",)}
@@ -36,6 +37,7 @@ class Request:
         self._raw_prepared_req_obj = self._raw_req_obj.prepare()
         self.callback = callback
         self._save = dict(save) if save is not None else {}
+        self.allow_codes = set(allow_codes) if allow_codes is not None else set()
 
     @property
     def save(self):
@@ -48,6 +50,7 @@ class Request:
     def __getattr__(self, item):
         if item not in self.__dict__:
             return getattr(self._raw_req_obj, item)
+
 
 class Response:
     def __init__(self, request: Request, raw_resp_obj: requests.Response):
@@ -129,6 +132,7 @@ class Project:
     def after(self):
         pass
 
+
 class Selector(_ParselSelector):
     __slots__ = ('response',)
 
@@ -163,6 +167,7 @@ class BiuCore:
     def send_request(self, req: Request):
         raw_req = req._raw_req_obj.prepare()
         retried = 0
+        resp = None
         for i in range(50):
             retried = i
             try:
@@ -171,8 +176,9 @@ class BiuCore:
 
                 send_args = req.send_args
                 raw_resp = self.rate_limit_send_request(raw_req, send_args)
+                if raw_resp.status_code in req.allow_codes:
+                    return self._pool.spawn(self.callback_handler, req, resp)
                 raw_resp.raise_for_status()
-                ## todo: handle error code
                 resp = Response(req, raw_resp)
                 return self._pool.spawn(self.callback_handler, req, resp)
             except requests.Timeout as e:
@@ -180,14 +186,15 @@ class BiuCore:
                 if retried < self._max_retry:
                     gevent.sleep(self._retry_delay)
                     continue
-                return
+                break
             except Exception as e:
                 logger.error(e)
                 if retried < self._max_retry:
                     gevent.sleep(self._retry_delay)
                     continue
-                return
+                break
         logger.error('Retry failed! {} {}'.format(raw_req.url, retried))
+        self.errorback_handler(resp)
 
     def rate_limit_send_request(self, req: requests.PreparedRequest, send_args: dict=None, proxies: dict=None):
         gevent.sleep(0)
@@ -235,13 +242,12 @@ class BiuCore:
             for i in rv:
                 self.process_value(i, pre_resp=pre_resp)
 
-
-
     def run(self):
         self.project.before()
         self.process_value(self.project.start_requests())
         self._pool.join()
         self.project.after()
+
 
 def run(proj_obj: Project):
     BiuCore(proj_obj).run()
