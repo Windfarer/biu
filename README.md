@@ -2,7 +2,7 @@
 A tiny web crawler framework
 
 ## Features
-* 请使用 Python3.6 或更高版本
+* 请使用 Python3.10 或更高版本
 * 并发基于 Gevent，因此你必须在脚本一开始`import biu`，或者自行 monkey patch
 * 请求基于 Requests，请求与请求结果的参数与 Requests 基本兼容
 * 页面解析基于 Parsel, 因此使用方法与 Scrapy 一致

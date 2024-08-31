@@ -1,13 +1,15 @@
 from gevent import monkey
+
 monkey.patch_all()
 
-import collections
+from collections.abc import Iterable
 
 import gevent
 from gevent.lock import BoundedSemaphore
 from gevent import pool
 
 import urllib3
+
 urllib3.disable_warnings()
 
 import requests
@@ -16,22 +18,46 @@ from timeit import default_timer
 from parsel import Selector as _ParselSelector
 
 from typing import Callable, Dict, TypeVar
+
 IntOrFloat = TypeVar([int, float])
 
 import logging
+
 logger = logging.getLogger(__name__)
 _logger_handler = logging.StreamHandler()
-_logger_formatter = logging.Formatter(
-        '[%(levelname)s] %(asctime)s - %(message)s')
+_logger_formatter = logging.Formatter("[%(levelname)s] %(asctime)s - %(message)s")
 _logger_handler.setFormatter(_logger_formatter)
 logger.addHandler(_logger_handler)
 logger.setLevel("INFO")
 
 
 class Request:
-    def __init__(self, url: str, callback: Callable=None, method="GET", save: Dict=None, allow_codes=None, **kwargs):
-        req_args = {k: v for k, v in kwargs.items() if k in ("method", "url", "headers", "files", "data",
-                                                     "params", "auth", "cookies", "hooks", "json")}
+    def __init__(
+        self,
+        url: str,
+        callback: Callable = None,
+        method="GET",
+        save: Dict = None,
+        allow_codes=None,
+        **kwargs
+    ):
+        req_args = {
+            k: v
+            for k, v in kwargs.items()
+            if k
+            in (
+                "method",
+                "url",
+                "headers",
+                "files",
+                "data",
+                "params",
+                "auth",
+                "cookies",
+                "hooks",
+                "json",
+            )
+        }
         self.send_args = {k: v for k, v in kwargs.items() if k in ("allow_redirects",)}
         self._raw_req_obj = requests.Request(url=url, method=method, **req_args)
         self._raw_prepared_req_obj = self._raw_req_obj.prepare()
@@ -99,14 +125,17 @@ class Response:
 
 
 class Project:
-    def __init__(self,
-                 concurrent: int=2,
-                 interval: IntOrFloat=1,
-                 max_retry: int=5,
-                 process_timeout: IntOrFloat=30,
-                 request_timeout: IntOrFloat=60,
-                 retry_delay:IntOrFloat=60,
-                 *args, **kwargs):
+    def __init__(
+        self,
+        concurrent: int = 2,
+        interval: IntOrFloat = 1,
+        max_retry: int = 5,
+        process_timeout: IntOrFloat = 30,
+        request_timeout: IntOrFloat = 60,
+        retry_delay: IntOrFloat = 60,
+        *args,
+        **kwargs
+    ):
         self.concurrent = concurrent
         self.interval = interval
         self.max_retry = max_retry
@@ -134,16 +163,18 @@ class Project:
 
 
 class Selector(_ParselSelector):
-    __slots__ = ('response',)
+    __slots__ = ("response",)
 
     def __init__(self, response=None, text=None, root=None, **kwargs):
-        if not(response is None or text is None):
-           raise ValueError('%s.__init__() received both response and text'
-                            % self.__class__.__name__)
+        if not (response is None or text is None):
+            raise ValueError(
+                "%s.__init__() received both response and text"
+                % self.__class__.__name__
+            )
 
         if response is not None:
             text = response.text
-            kwargs.setdefault('base_url', response.url)
+            kwargs.setdefault("base_url", response.url)
 
         self.response = response
         super(Selector, self).__init__(text=text, root=root, **kwargs)
@@ -171,8 +202,8 @@ class BiuCore:
         for i in range(50):
             retried = i
             try:
-                logger.debug('Retried {}'.format(retried))
-                logger.debug('Request sent {}'.format(raw_req.url))
+                logger.debug("Retried {}".format(retried))
+                logger.debug("Request sent {}".format(raw_req.url))
 
                 send_args = req.send_args
                 raw_resp = self.rate_limit_send_request(raw_req, send_args)
@@ -193,10 +224,15 @@ class BiuCore:
                     gevent.sleep(self._retry_delay)
                     continue
                 break
-        logger.error('Retry failed! {} {}'.format(raw_req.url, retried))
+        logger.error("Retry failed! {} {}".format(raw_req.url, retried))
         self.errorback_handler(resp)
 
-    def rate_limit_send_request(self, req: requests.PreparedRequest, send_args: dict=None, proxies: dict=None):
+    def rate_limit_send_request(
+        self,
+        req: requests.PreparedRequest,
+        send_args: dict = None,
+        proxies: dict = None,
+    ):
         gevent.sleep(0)
         with self._semaphore:
             last, current = self._last_time, default_timer()
@@ -205,10 +241,15 @@ class BiuCore:
                 gevent.sleep(self._interval - elapsed)
             self._last_time = default_timer()
 
-            return self._session.send(req, verify=False, proxies=proxies,
-                                      timeout=self._default_request_timeout, **send_args)
+            return self._session.send(
+                req,
+                verify=False,
+                proxies=proxies,
+                timeout=self._default_request_timeout,
+                **send_args
+            )
 
-    def callback_handler(self, req: Request, resp: Response, pre_resp: Response=None):
+    def callback_handler(self, req: Request, resp: Response, pre_resp: Response = None):
         logger.info("Request: %s %s %s", resp.status_code, req.method, resp.url)
         resp.save = dict(req.save)
         if not resp.save:
@@ -229,7 +270,7 @@ class BiuCore:
     def result_handler(self, result):
         return
 
-    def process_value(self, rv, pre_resp: Response=None):
+    def process_value(self, rv, pre_resp: Response = None):
         if isinstance(rv, dict):
             return self.result_handler(self.project.result_handler(rv))
         elif isinstance(rv, Request):
@@ -238,7 +279,7 @@ class BiuCore:
                 new_save.update(rv.save)
                 rv.save = new_save
             return self.send_request(rv)
-        elif isinstance(rv, collections.Iterable):
+        elif isinstance(rv, Iterable):
             for i in rv:
                 self.process_value(i, pre_resp=pre_resp)
 

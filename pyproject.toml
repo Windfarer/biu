@@ -1,0 +1,15 @@
+[project]
+name = "biu"
+version = "0.3.0"
+description = "tiny web crawler"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "gevent>=24.2.1",
+    "requests>=2.32.3",
+    "parsel>=1.9.1",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
